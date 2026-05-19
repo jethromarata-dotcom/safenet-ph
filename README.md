@@ -197,4 +197,8 @@ safenet-ph/
 - **Graph View** — force-directed graph visualization of all nodes and relationships; hover for full details
 - **Search** — live search on incidents, persons, locations, and agencies
 - **Light/Dark Mode** — toggle between themes
+<<<<<<< HEAD
 - **JSON Backup** — export the full graph database as a downloadable JSON file
+=======
+- **JSON Backup** — export the full graph database as a downloadable JSON file
+>>>>>>> a587f6cdceef1034ee3f095a7f976bd1fb937fa9
