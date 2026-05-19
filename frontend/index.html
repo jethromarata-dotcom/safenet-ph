@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SafeNet PH — Public Safety Intelligence</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon">⬡</div>
+      <div>
+        <div class="brand-name">SafeNet PH</div>
+        <div class="brand-sub">Public Safety Intelligence</div>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <a class="nav-item active" data-page="dashboard" onclick="navigate('dashboard')">
+        <span class="nav-icon">▦</span> Dashboard
+      </a>
+      <a class="nav-item" data-page="incidents" onclick="navigate('incidents')">
+        <span class="nav-icon">◈</span> Incidents
+      </a>
+      <a class="nav-item" data-page="persons" onclick="navigate('persons')">
+        <span class="nav-icon">◉</span> Persons
+      </a>
+      <a class="nav-item" data-page="locations" onclick="navigate('locations')">
+        <span class="nav-icon">◎</span> Locations
+      </a>
+      <a class="nav-item" data-page="agencies" onclick="navigate('agencies')">
+        <span class="nav-icon">⬡</span> Agencies
+      </a>
+      <a class="nav-item" data-page="map" onclick="navigate('map')">
+        <span class="nav-icon">⊕</span> Map View
+      </a>
+      <a class="nav-item" data-page="link" onclick="navigate('link')">
+        <span class="nav-icon">⊞</span> Link Person
+      </a>
+      <a class="nav-item" data-page="graph" onclick="navigate('graph')">
+        <span class="nav-icon">◌</span> Graph View
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn">☀ Light Mode</button>
+      <button class="backup-btn" onclick="downloadBackup()">⬇ Export JSON Backup</button>
+      <div class="sidebar-meta">Neo4j Graph Database</div>
+    </div>
+  </aside>
+
+  <main class="main" id="main">
+    <header class="topbar">
+      <div class="topbar-left">
+        <div class="page-title" id="pageTitle">Dashboard</div>
+        <div class="page-breadcrumb" id="pageBreadcrumb">Overview / Statistics</div>
+      </div>
+      <div class="topbar-right">
+        <div class="search-wrap" id="searchWrap" style="display:none">
+          <input type="text" class="search-input" id="searchInput" placeholder="Search..." oninput="handleSearch()" />
+          <span class="search-icon">⌕</span>
+        </div>
+        <div class="status-dot"></div>
+        <span class="status-label">Live</span>
+      </div>
+    </header>
+
+    <div class="toast" id="toast"></div>
+
+    <!-- DASHBOARD -->
+    <div class="page active" id="page-dashboard">
+      <div class="stat-grid" id="statGrid"></div>
+      <div class="dash-row">
+        <div class="card chart-card">
+          <div class="card-header">Incidents by Type</div>
+          <div class="bar-chart" id="chartByType"></div>
+        </div>
+        <div class="card chart-card">
+          <div class="card-header">Incidents by Severity</div>
+          <div class="bar-chart" id="chartBySeverity"></div>
+        </div>
+        <div class="card chart-card">
+          <div class="card-header">Incidents by Status</div>
+          <div class="bar-chart" id="chartByStatus"></div>
+        </div>
+      </div>
+      <div class="dash-row">
+        <div class="card hotspot-card">
+          <div class="card-header">🔥 Hotspot Locations</div>
+          <div id="hotspotList"></div>
+        </div>
+        <div class="card recent-card">
+          <div class="card-header">🕐 Recent Incidents</div>
+          <div id="recentList"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- INCIDENTS -->
+    <div class="page" id="page-incidents">
+      <div class="toolbar">
+        <button class="btn btn-primary" onclick="openModal('incident')">+ New Incident</button>
+      </div>
+      <div class="card">
+        <table class="data-table">
+          <thead><tr><th>Title</th><th>Type</th><th>Severity</th><th>Date</th><th>Status</th><th>Location</th><th>Actions</th></tr></thead>
+          <tbody id="incidentBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- PERSONS -->
+    <div class="page" id="page-persons">
+      <div class="toolbar">
+        <button class="btn btn-primary" onclick="openModal('person')">+ New Person</button>
+      </div>
+      <div class="card">
+        <table class="data-table">
+          <thead><tr><th>Name</th><th>Role</th><th>Age</th><th>Status</th><th>Incidents</th><th>Actions</th></tr></thead>
+          <tbody id="personBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- LOCATIONS -->
+    <div class="page" id="page-locations">
+      <div class="toolbar">
+        <button class="btn btn-primary" onclick="openModal('location')">+ New Location</button>
+      </div>
+      <div class="card">
+        <table class="data-table">
+          <thead><tr><th>Name</th><th>Type</th><th>Incidents</th><th>Coordinates</th><th>Actions</th></tr></thead>
+          <tbody id="locationBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- AGENCIES -->
+    <div class="page" id="page-agencies">
+      <div class="toolbar">
+        <button class="btn btn-primary" onclick="openModal('agency')">+ New Agency</button>
+      </div>
+      <div class="card">
+        <table class="data-table">
+          <thead><tr><th>Name</th><th>Code</th><th>Type</th><th>Incidents Handled</th><th>Actions</th></tr></thead>
+          <tbody id="agencyBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- MAP VIEW -->
+    <div class="page" id="page-map">
+      <div class="card" style="overflow:hidden">
+        <div class="card-header">
+          Incident Map — Iligan City
+          <span style="float:right;font-size:11px;font-weight:400;color:var(--text-muted);font-family:var(--font-body)">Right-click anywhere to add a location</span>
+        </div>
+        <div id="incidentMap" style="height:calc(100vh - 160px);width:100%;"></div>
+      </div>
+    </div>
+
+    <!-- LINK PERSON -->
+    <div class="page" id="page-link">
+      <div style="max-width:600px;margin:0 auto;display:flex;flex-direction:column;gap:24px">
+    
+        <div class="card">
+          <div class="card-header">🔗 Link Person to Incident</div>
+          <div style="padding:20px;display:flex;flex-direction:column;gap:16px">
+            <div class="form-group">
+              <label>Select Person</label>
+              <select id="linkPerson" class="form-input"></select>
+            </div>
+            <div class="form-group">
+              <label>Select Incident</label>
+              <select id="linkIncident" class="form-input"></select>
+            </div>
+            <div class="form-group">
+              <label>Relationship Type</label>
+              <select id="linkRole" class="form-input">
+                <option value="INVOLVED_IN">Involved In (Suspect/Victim)</option>
+                <option value="WITNESSED">Witnessed</option>
+                <option value="RESPONDED_TO">Responded To (Officer)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Person's Role Label</label>
+              <select id="linkRoleLabel" class="form-input">
+                <option>Suspect</option>
+                <option>Victim</option>
+                <option>Witness</option>
+                <option>Officer</option>
+              </select>
+            </div>
+            <button class="btn btn-primary" style="width:100%" onclick="saveLink()">🔗 Create Link</button>
+          </div>
+        </div>
+    
+        <div class="card">
+          <div class="card-header">✂ Unlink Person from Incident</div>
+          <div style="padding:20px;display:flex;flex-direction:column;gap:16px">
+            <p style="font-size:12px;color:var(--text-muted);margin:0">Select a person and incident to remove their relationship. You must specify which type of relationship to remove.</p>
+            <div class="form-group">
+              <label>Select Person</label>
+              <select id="unlinkPerson" class="form-input"><option value="">— Select —</option></select>
+            </div>
+            <div class="form-group">
+              <label>Select Incident</label>
+              <select id="unlinkIncident" class="form-input"><option value="">— Select —</option></select>
+            </div>
+            <div class="form-group">
+              <label>Relationship Type to Remove</label>
+              <select id="unlinkRole" class="form-input">
+                <option value="INVOLVED_IN">Involved In</option>
+                <option value="WITNESSED">Witnessed</option>
+                <option value="RESPONDED_TO">Responded To</option>
+              </select>
+            </div>
+            <button class="btn btn-danger" style="width:100%;padding:10px" onclick="removeLink()">✂ Remove Link</button>
+          </div>
+        </div>
+    
+      </div>
+    </div>
+
+    <!-- GRAPH VIEW -->
+    <div class="page" id="page-graph">
+      <div class="card graph-card">
+        <div class="card-header">Graph Relationship View <span class="graph-legend"><span style="color:#ff4757">●</span> Incident &nbsp; <span style="color:#00d4ff">●</span> Person &nbsp; <span style="color:#2ed573">●</span> Location &nbsp; <span style="color:#ffa502">●</span> Agency</span></div>
+        <canvas id="graphCanvas"></canvas>
+        <div class="graph-hint">Drag nodes to reposition • Hover to see details</div>
+      </div>
+    </div>
+
+  </main>
+
+  <div class="modal-overlay" id="modalOverlay" onclick="closeModal()"></div>
+
+  <!-- INCIDENT MODAL -->
+  <div class="modal" id="modal-incident">
+    <div class="modal-header">
+      <span id="incidentModalTitle">New Incident</span>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="incidentId" />
+      <div class="form-group">
+        <label>Title</label>
+        <input type="text" id="incidentTitle" class="form-input" placeholder="Incident title" />
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Type</label>
+          <select id="incidentType" class="form-input">
+            <option>Robbery</option><option>Theft</option><option>Assault</option>
+            <option>Fire</option><option>Drug Offense</option><option>Natural Disaster</option>
+            <option>Homicide</option><option>Kidnapping</option><option>Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Severity</label>
+          <select id="incidentSeverity" class="form-input">
+            <option>Low</option><option>Medium</option><option>High</option><option>Critical</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Date</label>
+          <input type="date" id="incidentDate" class="form-input" />
+        </div>
+        <div class="form-group">
+          <label>Status</label>
+          <select id="incidentStatus" class="form-input">
+            <option>Open</option><option>Under Investigation</option><option>Resolved</option><option>Closed</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Location</label>
+          <select id="incidentLocation" class="form-input"><option value="">— None —</option></select>
+        </div>
+        <div class="form-group">
+          <label>Responding Agency</label>
+          <select id="incidentAgency" class="form-input"><option value="">— None —</option></select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveIncident()">Save Incident</button>
+    </div>
+  </div>
+
+  <!-- PERSON MODAL -->
+  <div class="modal" id="modal-person">
+    <div class="modal-header">
+      <span id="personModalTitle">New Person</span>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="personId" />
+      <div class="form-group">
+        <label>Full Name</label>
+        <input type="text" id="personName" class="form-input" placeholder="Full name" />
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Role</label>
+          <select id="personRole" class="form-input">
+            <option>Suspect</option><option>Victim</option><option>Witness</option><option>Officer</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Age</label>
+          <input type="number" id="personAge" class="form-input" placeholder="Age" min="1" max="120" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Status</label>
+        <select id="personStatus" class="form-input">
+          <option>Active</option><option>At Large</option><option>Arrested</option>
+          <option>Safe</option><option>Hospitalized</option><option>Deceased</option><option>Interviewed</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="savePerson()">Save Person</button>
+    </div>
+  </div>
+
+  <!-- LOCATION MODAL -->
+  <div class="modal" id="modal-location">
+    <div class="modal-header">
+      <span id="locationModalTitle">New Location</span>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="locationId" />
+      <div class="form-group">
+        <label>Location Name</label>
+        <input type="text" id="locationName" class="form-input" placeholder="e.g. Poblacion, Iligan City" />
+      </div>
+      <div class="form-group">
+        <label>Type</label>
+        <select id="locationType" class="form-input">
+          <option>Barangay</option><option>District</option><option>City</option>
+          <option>Landmark</option><option>Province</option><option>Region</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Latitude</label>
+          <input type="number" id="locationLat" class="form-input" placeholder="8.2280" step="0.0001" />
+        </div>
+        <div class="form-group">
+          <label>Longitude</label>
+          <input type="number" id="locationLng" class="form-input" placeholder="124.2452" step="0.0001" />
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveLocation()">Save Location</button>
+    </div>
+  </div>
+
+  <!-- AGENCY MODAL -->
+  <div class="modal" id="modal-agency">
+    <div class="modal-header">
+      <span id="agencyModalTitle">New Agency</span>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="agencyId" />
+      <div class="form-group">
+        <label>Agency Name</label>
+        <input type="text" id="agencyName" class="form-input" placeholder="e.g. Iligan City Police Office" />
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Code / Abbreviation</label>
+          <input type="text" id="agencyCode" class="form-input" placeholder="e.g. ICPO" />
+        </div>
+        <div class="form-group">
+          <label>Type</label>
+          <select id="agencyType" class="form-input">
+            <option>Police</option><option>Fire</option><option>Medical</option>
+            <option>Disaster Response</option><option>Military</option><option>Other</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveAgency()">Save Agency</button>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
